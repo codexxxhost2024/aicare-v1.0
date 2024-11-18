@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
 import { Check, ChevronRight } from 'lucide-react';
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+
+interface OnboardingFormProps {
+  onComplete: () => void;
+}
 
 interface Step {
   id: number;
@@ -25,7 +32,22 @@ const steps: Step[] = [
   }
 ];
 
-export default function OnboardingForm() {
+const firebaseConfig = {
+  apiKey: "AIzaSyCsjnzjTI-VZhYK6B2_f1mG0WLKbW6UHm4",
+  authDomain: "davaoprimemobile.firebaseapp.com",
+  databaseURL: "https://davaoprimemobile-default-rtdb.firebaseio.com",
+  projectId: "davaoprimemobile",
+  storageBucket: "davaoprimemobile.appspot.com",
+  messagingSenderId: "1048965119081",
+  appId: "1:1048965119081:web:c131a87fa14ad0c5bff6f8",
+  measurementId: "G-K4ZQ9YJ7Y4"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export default function OnboardingForm({ onComplete }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -56,6 +78,35 @@ export default function OnboardingForm() {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const handleComplete = async () => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, 'password'); // Replace 'password' with a secure password generation method
+      const user = userCredential.user;
+      console.log("User created:", user);
+
+      // Add user data to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        conditions: formData.conditions,
+        medications: formData.medications,
+        allergies: formData.allergies,
+        preferredLanguage: formData.preferredLanguage,
+        communicationPreference: formData.communicationPreference,
+      });
+      console.log("User data added to Firestore");
+
+      onComplete(); // Call the onComplete prop to update App state
+
+    } catch (error) {
+      console.error("Error creating user:", error);
+      // Handle error appropriately (e.g., display an error message)
     }
   };
 
@@ -249,7 +300,7 @@ export default function OnboardingForm() {
               </button>
               <button
                 type="button"
-                onClick={currentStep === 3 ? () => {} : handleNext}
+                onClick={currentStep === 3 ? handleComplete : handleNext}
                 className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {currentStep === 3 ? 'Complete' : 'Next'}
